@@ -9,12 +9,13 @@
 ******************************************************************************/
 package org.eclipse.equinox.p2.tests.publisher.actions;
 
-import java.io.File;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.URI;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.equinox.internal.p2.updatesite.CategoryPublisherApplication;
 import org.eclipse.equinox.p2.publisher.AbstractPublisherApplication;
 import org.eclipse.equinox.p2.tests.*;
+import org.osgi.framework.Bundle;
 
 /**
  *
@@ -102,6 +103,52 @@ public class CategoryPublisherTest extends AbstractProvisioningTest {
 		} finally {
 			if (repository != null & repository.exists())
 				delete(repository);
+		}
+	}
+
+	public void testRepoWithBundle() throws Exception {
+		File repository = null;
+		File categoryFolder = null;
+		BufferedReader contentReader = null;
+		try {
+			categoryFolder = getTempFolder();
+			File categoryFile = new File(categoryFolder, "category.xml");
+			categoryFile.createNewFile();
+			FileOutputStream categoryStream = new FileOutputStream(categoryFile);
+			categoryStream.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<site>\n".getBytes());
+
+			Bundle bundle = Platform.getBundle("org.eclipse.core.runtime");
+			categoryStream.write(("<bundle url=\"plugins/" + bundle.getSymbolicName() + "_" + bundle.getVersion().toString() + ".jar\" id=\"" + bundle.getSymbolicName() + "\" version=\"" + bundle.getVersion().toString() + "\"/>\n").getBytes());
+			categoryStream.write("</site>".getBytes());
+			categoryStream.close();
+
+			repository = getTempFolder();
+			URI repositoryURI = repository.toURI();
+			String[] args = new String[] {"-metadataRepository", repositoryURI.toString(), "-categoryDefinition", categoryFile.toURI().toString()};
+
+			CategoryPublisherApplication categoryPublisherApplication = new CategoryPublisherApplication();
+			runPublisherApp(categoryPublisherApplication, args);
+
+			File contentFile = new File(repository, "content.xml");
+			contentReader = new BufferedReader(new FileReader(contentFile));
+			String line = null;
+			boolean found = false;
+			while (!found && (line = contentReader.readLine()) != null) {
+				if (line.contains("org.eclipse.core.runtime")) {
+					found = true;
+				}
+			}
+			assertTrue("Bundle IU not found in output repo", found);
+
+		} finally {
+			if (repository != null && repository.exists())
+				delete(repository);
+			if (categoryFolder != null && categoryFolder.exists()) {
+				delete(categoryFolder);
+			}
+			if (contentReader != null) {
+				contentReader.close();
+			}
 		}
 	}
 

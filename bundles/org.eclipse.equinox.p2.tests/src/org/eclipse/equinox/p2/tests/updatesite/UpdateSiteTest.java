@@ -841,6 +841,26 @@ public class UpdateSiteTest extends AbstractProvisioningTest {
 		}
 	}
 
+	public void testSiteWithBundle() {
+		// Test feature 378338
+		File site = getTestData("0.1", "/testData/updatesite/siteWithBundles");
+		UpdateSite updatesite = null;
+		try {
+			updatesite = UpdateSite.loadCategoryFile(site.toURI(), getTransport(), getMonitor());
+		} catch (ProvisionException e) {
+			fail("0.2", e);
+		}
+
+		try {
+			int featureCount = updatesite.loadFeatures(new NullProgressMonitor()).length;
+			assertEquals(1, featureCount);
+			int bundleCount = updatesite.loadBundles(new NullProgressMonitor()).length;
+			assertEquals(1, bundleCount);
+		} catch (ProvisionException e) {
+			fail("0.4", e);
+		}
+	}
+
 	/*
 	 * Special mirror selector for testing which chooses mirrors in order
 	 */
